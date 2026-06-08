@@ -1,0 +1,714 @@
+2026-06-08 00:32:33.843 +05:30 [INF] Executed DbCommand (194ms) [Parameters=[], CommandType='"Text"', CommandTimeout='60']
+CREATE DATABASE [CollaborativeWorkspaceDb_Dev];
+2026-06-08 00:32:34.004 +05:30 [INF] Executed DbCommand (85ms) [Parameters=[], CommandType='"Text"', CommandTimeout='60']
+IF SERVERPROPERTY('EngineEdition') <> 5
+BEGIN
+    ALTER DATABASE [CollaborativeWorkspaceDb_Dev] SET READ_COMMITTED_SNAPSHOT ON;
+END;
+2026-06-08 00:32:34.061 +05:30 [INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-06-08 00:32:34.195 +05:30 [INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [__EFMigrationsHistory] (
+    [MigrationId] nvarchar(150) NOT NULL,
+    [ProductVersion] nvarchar(32) NOT NULL,
+    CONSTRAINT [PK___EFMigrationsHistory] PRIMARY KEY ([MigrationId])
+);
+2026-06-08 00:32:34.198 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-06-08 00:32:34.229 +05:30 [INF] Executed DbCommand (27ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-06-08 00:32:34.266 +05:30 [INF] Executed DbCommand (33ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2026-06-08 00:32:34.630 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [EmailTemplates] (
+    [TemplateId] int NOT NULL IDENTITY,
+    [TemplateKey] nvarchar(100) NOT NULL,
+    [Subject] nvarchar(256) NOT NULL,
+    [HtmlBody] nvarchar(max) NOT NULL,
+    [PlainBody] nvarchar(max) NULL,
+    [IsActive] bit NOT NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [UpdatedAt] datetime2 NULL,
+    CONSTRAINT [PK_EmailTemplates] PRIMARY KEY ([TemplateId])
+);
+2026-06-08 00:32:34.633 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Plans] (
+    [PlanId] int NOT NULL IDENTITY,
+    [PlanName] nvarchar(50) NOT NULL,
+    [Price] decimal(10,2) NOT NULL DEFAULT 0.0,
+    [DurationDays] int NOT NULL,
+    [MaxMembers] int NULL,
+    [StripePriceId] nvarchar(100) NULL,
+    [IsActive] bit NOT NULL,
+    [Features] nvarchar(max) NULL,
+    CONSTRAINT [PK_Plans] PRIMARY KEY ([PlanId])
+);
+2026-06-08 00:32:34.636 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Roles] (
+    [RoleId] int NOT NULL IDENTITY,
+    [RoleName] nvarchar(50) NOT NULL,
+    CONSTRAINT [PK_Roles] PRIMARY KEY ([RoleId])
+);
+2026-06-08 00:32:34.642 +05:30 [INF] Executed DbCommand (6ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [StripeEvents] (
+    [EventId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [StripeEventId] nvarchar(100) NOT NULL,
+    [EventType] nvarchar(100) NOT NULL,
+    [Payload] nvarchar(max) NOT NULL,
+    [ProcessedAt] datetime2 NULL,
+    [IsProcessed] bit NOT NULL,
+    [Error] nvarchar(max) NULL,
+    [ReceivedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_StripeEvents] PRIMARY KEY ([EventId])
+);
+2026-06-08 00:32:34.646 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Users] (
+    [UserId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [FullName] nvarchar(100) NOT NULL,
+    [Email] nvarchar(256) NOT NULL,
+    [PasswordHash] nvarchar(512) NOT NULL,
+    [IsEmailVerified] bit NOT NULL,
+    [EmailVerifyToken] nvarchar(512) NULL,
+    [EmailVerifyExpiry] datetime2 NULL,
+    [PasswordResetToken] nvarchar(512) NULL,
+    [PasswordResetExpiry] datetime2 NULL,
+    [IsActive] bit NOT NULL,
+    [AvatarUrl] nvarchar(512) NULL,
+    [StripeCustomerId] nvarchar(100) NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [UpdatedAt] datetime2 NULL,
+    CONSTRAINT [PK_Users] PRIMARY KEY ([UserId])
+);
+2026-06-08 00:32:34.652 +05:30 [INF] Executed DbCommand (6ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [AuditLogs] (
+    [LogId] bigint NOT NULL IDENTITY,
+    [UserId] uniqueidentifier NULL,
+    [Action] nvarchar(100) NOT NULL,
+    [EntityType] nvarchar(50) NULL,
+    [EntityId] nvarchar(100) NULL,
+    [Details] nvarchar(max) NULL,
+    [IpAddress] nvarchar(50) NULL,
+    [UserAgent] nvarchar(512) NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_AuditLogs] PRIMARY KEY ([LogId]),
+    CONSTRAINT [FK_AuditLogs_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE SET NULL
+);
+2026-06-08 00:32:34.660 +05:30 [INF] Executed DbCommand (8ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [EmailLogs] (
+    [LogId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [TemplateKey] nvarchar(100) NULL,
+    [ToEmail] nvarchar(256) NOT NULL,
+    [Subject] nvarchar(256) NOT NULL,
+    [HtmlBody] nvarchar(max) NULL,
+    [Status] nvarchar(20) NOT NULL DEFAULT N'Pending',
+    [SentAt] datetime2 NULL,
+    [FailedAt] datetime2 NULL,
+    [ErrorMessage] nvarchar(1000) NULL,
+    [RetryCount] int NOT NULL,
+    [RelatedUserId] uniqueidentifier NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_EmailLogs] PRIMARY KEY ([LogId]),
+    CONSTRAINT [FK_EmailLogs_Users_RelatedUserId] FOREIGN KEY ([RelatedUserId]) REFERENCES [Users] ([UserId]) ON DELETE SET NULL
+);
+2026-06-08 00:32:34.664 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [RefreshTokens] (
+    [TokenId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [UserId] uniqueidentifier NOT NULL,
+    [Token] nvarchar(512) NOT NULL,
+    [ExpiresAt] datetime2 NOT NULL,
+    [IsRevoked] bit NOT NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_RefreshTokens] PRIMARY KEY ([TokenId]),
+    CONSTRAINT [FK_RefreshTokens_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE CASCADE
+);
+2026-06-08 00:32:34.682 +05:30 [INF] Executed DbCommand (18ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Subscriptions] (
+    [SubscriptionId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [UserId] uniqueidentifier NOT NULL,
+    [PlanId] int NOT NULL,
+    [StripeSubscriptionId] nvarchar(100) NULL,
+    [StartDate] datetime2 NOT NULL,
+    [EndDate] datetime2 NOT NULL,
+    [Status] nvarchar(20) NOT NULL DEFAULT N'Active',
+    [CancelledAt] datetime2 NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_Subscriptions] PRIMARY KEY ([SubscriptionId]),
+    CONSTRAINT [FK_Subscriptions_Plans_PlanId] FOREIGN KEY ([PlanId]) REFERENCES [Plans] ([PlanId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_Subscriptions_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION
+);
+2026-06-08 00:32:34.697 +05:30 [INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [UserRoles] (
+    [UserId] uniqueidentifier NOT NULL,
+    [RoleId] int NOT NULL,
+    CONSTRAINT [PK_UserRoles] PRIMARY KEY ([UserId], [RoleId]),
+    CONSTRAINT [FK_UserRoles_Roles_RoleId] FOREIGN KEY ([RoleId]) REFERENCES [Roles] ([RoleId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_UserRoles_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE CASCADE
+);
+2026-06-08 00:32:34.702 +05:30 [INF] Executed DbCommand (5ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [UserSessions] (
+    [SessionId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [UserId] uniqueidentifier NOT NULL,
+    [DeviceInfo] nvarchar(256) NULL,
+    [IpAddress] nvarchar(50) NULL,
+    [LoginAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [LastSeenAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [LogoutAt] datetime2 NULL,
+    [IsActive] bit NOT NULL,
+    CONSTRAINT [PK_UserSessions] PRIMARY KEY ([SessionId]),
+    CONSTRAINT [FK_UserSessions_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE CASCADE
+);
+2026-06-08 00:32:34.708 +05:30 [INF] Executed DbCommand (6ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Workspaces] (
+    [WorkspaceId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [Name] nvarchar(100) NOT NULL,
+    [Description] nvarchar(500) NULL,
+    [OwnerId] uniqueidentifier NOT NULL,
+    [LogoUrl] nvarchar(512) NULL,
+    [IsActive] bit NOT NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [UpdatedAt] datetime2 NULL,
+    CONSTRAINT [PK_Workspaces] PRIMARY KEY ([WorkspaceId]),
+    CONSTRAINT [FK_Workspaces_Users_OwnerId] FOREIGN KEY ([OwnerId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION
+);
+2026-06-08 00:32:34.713 +05:30 [INF] Executed DbCommand (5ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Channels] (
+    [ChannelId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [WorkspaceId] uniqueidentifier NOT NULL,
+    [ChannelName] nvarchar(100) NOT NULL,
+    [ChannelType] nvarchar(20) NOT NULL DEFAULT N'text',
+    [IsPrivate] bit NOT NULL,
+    [IsPremium] bit NOT NULL,
+    [IsArchived] bit NOT NULL,
+    [CreatedBy] uniqueidentifier NOT NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [UpdatedAt] datetime2 NULL,
+    CONSTRAINT [PK_Channels] PRIMARY KEY ([ChannelId]),
+    CONSTRAINT [FK_Channels_Users_CreatedBy] FOREIGN KEY ([CreatedBy]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_Channels_Workspaces_WorkspaceId] FOREIGN KEY ([WorkspaceId]) REFERENCES [Workspaces] ([WorkspaceId]) ON DELETE CASCADE
+);
+2026-06-08 00:32:34.720 +05:30 [INF] Executed DbCommand (6ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [WorkspaceInvitations] (
+    [InvitationId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [WorkspaceId] uniqueidentifier NOT NULL,
+    [InvitedByUserId] uniqueidentifier NOT NULL,
+    [InvitedEmail] nvarchar(256) NOT NULL,
+    [Token] nvarchar(512) NOT NULL,
+    [Status] nvarchar(20) NOT NULL DEFAULT N'Pending',
+    [ExpiresAt] datetime2 NOT NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [RespondedAt] datetime2 NULL,
+    CONSTRAINT [PK_WorkspaceInvitations] PRIMARY KEY ([InvitationId]),
+    CONSTRAINT [FK_WorkspaceInvitations_Users_InvitedByUserId] FOREIGN KEY ([InvitedByUserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_WorkspaceInvitations_Workspaces_WorkspaceId] FOREIGN KEY ([WorkspaceId]) REFERENCES [Workspaces] ([WorkspaceId]) ON DELETE CASCADE
+);
+2026-06-08 00:32:34.728 +05:30 [INF] Executed DbCommand (8ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [WorkspaceMembers] (
+    [Id] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [WorkspaceId] uniqueidentifier NOT NULL,
+    [UserId] uniqueidentifier NOT NULL,
+    [MemberRole] nvarchar(50) NOT NULL DEFAULT N'Member',
+    [JoinedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [IsActive] bit NOT NULL,
+    CONSTRAINT [PK_WorkspaceMembers] PRIMARY KEY ([Id]),
+    CONSTRAINT [FK_WorkspaceMembers_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_WorkspaceMembers_Workspaces_WorkspaceId] FOREIGN KEY ([WorkspaceId]) REFERENCES [Workspaces] ([WorkspaceId]) ON DELETE CASCADE
+);
+2026-06-08 00:32:34.733 +05:30 [INF] Executed DbCommand (5ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [CallRooms] (
+    [CallRoomId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [WorkspaceId] uniqueidentifier NOT NULL,
+    [ChannelId] uniqueidentifier NOT NULL,
+    [CreatedBy] uniqueidentifier NOT NULL,
+    [IsActive] bit NOT NULL,
+    [EndedAt] datetime2 NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_CallRooms] PRIMARY KEY ([CallRoomId]),
+    CONSTRAINT [FK_CallRooms_Channels_ChannelId] FOREIGN KEY ([ChannelId]) REFERENCES [Channels] ([ChannelId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_CallRooms_Users_CreatedBy] FOREIGN KEY ([CreatedBy]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_CallRooms_Workspaces_WorkspaceId] FOREIGN KEY ([WorkspaceId]) REFERENCES [Workspaces] ([WorkspaceId]) ON DELETE NO ACTION
+);
+2026-06-08 00:32:34.741 +05:30 [INF] Executed DbCommand (8ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [ChannelMembers] (
+    [Id] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [ChannelId] uniqueidentifier NOT NULL,
+    [UserId] uniqueidentifier NOT NULL,
+    [AddedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_ChannelMembers] PRIMARY KEY ([Id]),
+    CONSTRAINT [FK_ChannelMembers_Channels_ChannelId] FOREIGN KEY ([ChannelId]) REFERENCES [Channels] ([ChannelId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_ChannelMembers_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION
+);
+2026-06-08 00:32:34.750 +05:30 [INF] Executed DbCommand (8ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [GameRooms] (
+    [GameRoomId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [WorkspaceId] uniqueidentifier NOT NULL,
+    [ChannelId] uniqueidentifier NOT NULL,
+    [GameType] nvarchar(50) NOT NULL DEFAULT N'Scribble',
+    [IsActive] bit NOT NULL,
+    [EndedAt] datetime2 NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_GameRooms] PRIMARY KEY ([GameRoomId]),
+    CONSTRAINT [FK_GameRooms_Channels_ChannelId] FOREIGN KEY ([ChannelId]) REFERENCES [Channels] ([ChannelId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_GameRooms_Workspaces_WorkspaceId] FOREIGN KEY ([WorkspaceId]) REFERENCES [Workspaces] ([WorkspaceId]) ON DELETE NO ACTION
+);
+2026-06-08 00:32:34.762 +05:30 [INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Messages] (
+    [MessageId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [ChannelId] uniqueidentifier NOT NULL,
+    [SenderId] uniqueidentifier NOT NULL,
+    [Content] nvarchar(max) NOT NULL,
+    [ParentMessageId] uniqueidentifier NULL,
+    [IsDeleted] bit NOT NULL,
+    [DeletedAt] datetime2 NULL,
+    [EditedAt] datetime2 NULL,
+    [SentAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_Messages] PRIMARY KEY ([MessageId]),
+    CONSTRAINT [FK_Messages_Channels_ChannelId] FOREIGN KEY ([ChannelId]) REFERENCES [Channels] ([ChannelId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_Messages_Messages_ParentMessageId] FOREIGN KEY ([ParentMessageId]) REFERENCES [Messages] ([MessageId]),
+    CONSTRAINT [FK_Messages_Users_SenderId] FOREIGN KEY ([SenderId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION
+);
+2026-06-08 00:32:34.826 +05:30 [ERR] Failed executing DbCommand (63ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Complaints] (
+    [ComplaintId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [ReportedByUserId] uniqueidentifier NOT NULL,
+    [ReportedUserId] uniqueidentifier NULL,
+    [WorkspaceId] uniqueidentifier NULL,
+    [MessageId] uniqueidentifier NULL,
+    [Category] nvarchar(50) NOT NULL,
+    [Description] nvarchar(2000) NOT NULL,
+    [Status] nvarchar(20) NOT NULL DEFAULT N'Open',
+    [ResolvedByUserId] uniqueidentifier NULL,
+    [Resolution] nvarchar(1000) NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [UpdatedAt] datetime2 NULL,
+    CONSTRAINT [PK_Complaints] PRIMARY KEY ([ComplaintId]),
+    CONSTRAINT [FK_Complaints_Messages_MessageId] FOREIGN KEY ([MessageId]) REFERENCES [Messages] ([MessageId]) ON DELETE SET NULL,
+    CONSTRAINT [FK_Complaints_Users_ReportedByUserId] FOREIGN KEY ([ReportedByUserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_Complaints_Users_ReportedUserId] FOREIGN KEY ([ReportedUserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_Complaints_Users_ResolvedByUserId] FOREIGN KEY ([ResolvedByUserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_Complaints_Workspaces_WorkspaceId] FOREIGN KEY ([WorkspaceId]) REFERENCES [Workspaces] ([WorkspaceId]) ON DELETE SET NULL
+);
+2026-06-08 00:33:40.474 +05:30 [INF] Executed DbCommand (24ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-06-08 00:33:40.565 +05:30 [INF] Executed DbCommand (19ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-06-08 00:33:40.607 +05:30 [INF] Executed DbCommand (19ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2026-06-08 00:34:52.088 +05:30 [INF] Executed DbCommand (33ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-06-08 00:34:52.181 +05:30 [INF] Executed DbCommand (18ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-06-08 00:34:52.185 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-06-08 00:34:52.186 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-06-08 00:34:52.221 +05:30 [INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2026-06-08 00:34:52.538 +05:30 [INF] Executed DbCommand (7ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [EmailTemplates] (
+    [TemplateId] int NOT NULL IDENTITY,
+    [TemplateKey] nvarchar(100) NOT NULL,
+    [Subject] nvarchar(256) NOT NULL,
+    [HtmlBody] nvarchar(max) NOT NULL,
+    [PlainBody] nvarchar(max) NULL,
+    [IsActive] bit NOT NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [UpdatedAt] datetime2 NULL,
+    CONSTRAINT [PK_EmailTemplates] PRIMARY KEY ([TemplateId])
+);
+2026-06-08 00:34:52.542 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Plans] (
+    [PlanId] int NOT NULL IDENTITY,
+    [PlanName] nvarchar(50) NOT NULL,
+    [Price] decimal(10,2) NOT NULL DEFAULT 0.0,
+    [DurationDays] int NOT NULL,
+    [MaxMembers] int NULL,
+    [StripePriceId] nvarchar(100) NULL,
+    [IsActive] bit NOT NULL,
+    [Features] nvarchar(max) NULL,
+    CONSTRAINT [PK_Plans] PRIMARY KEY ([PlanId])
+);
+2026-06-08 00:34:52.547 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Roles] (
+    [RoleId] int NOT NULL IDENTITY,
+    [RoleName] nvarchar(50) NOT NULL,
+    CONSTRAINT [PK_Roles] PRIMARY KEY ([RoleId])
+);
+2026-06-08 00:34:52.550 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [StripeEvents] (
+    [EventId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [StripeEventId] nvarchar(100) NOT NULL,
+    [EventType] nvarchar(100) NOT NULL,
+    [Payload] nvarchar(max) NOT NULL,
+    [ProcessedAt] datetime2 NULL,
+    [IsProcessed] bit NOT NULL,
+    [Error] nvarchar(max) NULL,
+    [ReceivedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_StripeEvents] PRIMARY KEY ([EventId])
+);
+2026-06-08 00:34:52.553 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Users] (
+    [UserId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [FullName] nvarchar(100) NOT NULL,
+    [Email] nvarchar(256) NOT NULL,
+    [PasswordHash] nvarchar(512) NOT NULL,
+    [IsEmailVerified] bit NOT NULL,
+    [EmailVerifyToken] nvarchar(512) NULL,
+    [EmailVerifyExpiry] datetime2 NULL,
+    [PasswordResetToken] nvarchar(512) NULL,
+    [PasswordResetExpiry] datetime2 NULL,
+    [IsActive] bit NOT NULL,
+    [AvatarUrl] nvarchar(512) NULL,
+    [StripeCustomerId] nvarchar(100) NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [UpdatedAt] datetime2 NULL,
+    CONSTRAINT [PK_Users] PRIMARY KEY ([UserId])
+);
+2026-06-08 00:34:52.558 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [AuditLogs] (
+    [LogId] bigint NOT NULL IDENTITY,
+    [UserId] uniqueidentifier NULL,
+    [Action] nvarchar(100) NOT NULL,
+    [EntityType] nvarchar(50) NULL,
+    [EntityId] nvarchar(100) NULL,
+    [Details] nvarchar(max) NULL,
+    [IpAddress] nvarchar(50) NULL,
+    [UserAgent] nvarchar(512) NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_AuditLogs] PRIMARY KEY ([LogId]),
+    CONSTRAINT [FK_AuditLogs_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE SET NULL
+);
+2026-06-08 00:34:52.563 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [EmailLogs] (
+    [LogId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [TemplateKey] nvarchar(100) NULL,
+    [ToEmail] nvarchar(256) NOT NULL,
+    [Subject] nvarchar(256) NOT NULL,
+    [HtmlBody] nvarchar(max) NULL,
+    [Status] nvarchar(20) NOT NULL DEFAULT N'Pending',
+    [SentAt] datetime2 NULL,
+    [FailedAt] datetime2 NULL,
+    [ErrorMessage] nvarchar(1000) NULL,
+    [RetryCount] int NOT NULL,
+    [RelatedUserId] uniqueidentifier NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_EmailLogs] PRIMARY KEY ([LogId]),
+    CONSTRAINT [FK_EmailLogs_Users_RelatedUserId] FOREIGN KEY ([RelatedUserId]) REFERENCES [Users] ([UserId]) ON DELETE SET NULL
+);
+2026-06-08 00:34:52.566 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [RefreshTokens] (
+    [TokenId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [UserId] uniqueidentifier NOT NULL,
+    [Token] nvarchar(512) NOT NULL,
+    [ExpiresAt] datetime2 NOT NULL,
+    [IsRevoked] bit NOT NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_RefreshTokens] PRIMARY KEY ([TokenId]),
+    CONSTRAINT [FK_RefreshTokens_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE CASCADE
+);
+2026-06-08 00:34:52.571 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Subscriptions] (
+    [SubscriptionId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [UserId] uniqueidentifier NOT NULL,
+    [PlanId] int NOT NULL,
+    [StripeSubscriptionId] nvarchar(100) NULL,
+    [StartDate] datetime2 NOT NULL,
+    [EndDate] datetime2 NOT NULL,
+    [Status] nvarchar(20) NOT NULL DEFAULT N'Active',
+    [CancelledAt] datetime2 NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_Subscriptions] PRIMARY KEY ([SubscriptionId]),
+    CONSTRAINT [FK_Subscriptions_Plans_PlanId] FOREIGN KEY ([PlanId]) REFERENCES [Plans] ([PlanId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_Subscriptions_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION
+);
+2026-06-08 00:34:52.574 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [UserRoles] (
+    [UserId] uniqueidentifier NOT NULL,
+    [RoleId] int NOT NULL,
+    CONSTRAINT [PK_UserRoles] PRIMARY KEY ([UserId], [RoleId]),
+    CONSTRAINT [FK_UserRoles_Roles_RoleId] FOREIGN KEY ([RoleId]) REFERENCES [Roles] ([RoleId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_UserRoles_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE CASCADE
+);
+2026-06-08 00:34:52.582 +05:30 [INF] Executed DbCommand (8ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [UserSessions] (
+    [SessionId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [UserId] uniqueidentifier NOT NULL,
+    [DeviceInfo] nvarchar(256) NULL,
+    [IpAddress] nvarchar(50) NULL,
+    [LoginAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [LastSeenAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [LogoutAt] datetime2 NULL,
+    [IsActive] bit NOT NULL,
+    CONSTRAINT [PK_UserSessions] PRIMARY KEY ([SessionId]),
+    CONSTRAINT [FK_UserSessions_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE CASCADE
+);
+2026-06-08 00:34:52.590 +05:30 [INF] Executed DbCommand (7ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Workspaces] (
+    [WorkspaceId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [Name] nvarchar(100) NOT NULL,
+    [Description] nvarchar(500) NULL,
+    [OwnerId] uniqueidentifier NOT NULL,
+    [LogoUrl] nvarchar(512) NULL,
+    [IsActive] bit NOT NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [UpdatedAt] datetime2 NULL,
+    CONSTRAINT [PK_Workspaces] PRIMARY KEY ([WorkspaceId]),
+    CONSTRAINT [FK_Workspaces_Users_OwnerId] FOREIGN KEY ([OwnerId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION
+);
+2026-06-08 00:34:52.602 +05:30 [INF] Executed DbCommand (11ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Channels] (
+    [ChannelId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [WorkspaceId] uniqueidentifier NOT NULL,
+    [ChannelName] nvarchar(100) NOT NULL,
+    [ChannelType] nvarchar(20) NOT NULL DEFAULT N'text',
+    [IsPrivate] bit NOT NULL,
+    [IsPremium] bit NOT NULL,
+    [IsArchived] bit NOT NULL,
+    [CreatedBy] uniqueidentifier NOT NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [UpdatedAt] datetime2 NULL,
+    CONSTRAINT [PK_Channels] PRIMARY KEY ([ChannelId]),
+    CONSTRAINT [FK_Channels_Users_CreatedBy] FOREIGN KEY ([CreatedBy]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_Channels_Workspaces_WorkspaceId] FOREIGN KEY ([WorkspaceId]) REFERENCES [Workspaces] ([WorkspaceId]) ON DELETE CASCADE
+);
+2026-06-08 00:34:52.616 +05:30 [INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [WorkspaceInvitations] (
+    [InvitationId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [WorkspaceId] uniqueidentifier NOT NULL,
+    [InvitedByUserId] uniqueidentifier NOT NULL,
+    [InvitedEmail] nvarchar(256) NOT NULL,
+    [Token] nvarchar(512) NOT NULL,
+    [Status] nvarchar(20) NOT NULL DEFAULT N'Pending',
+    [ExpiresAt] datetime2 NOT NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [RespondedAt] datetime2 NULL,
+    CONSTRAINT [PK_WorkspaceInvitations] PRIMARY KEY ([InvitationId]),
+    CONSTRAINT [FK_WorkspaceInvitations_Users_InvitedByUserId] FOREIGN KEY ([InvitedByUserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_WorkspaceInvitations_Workspaces_WorkspaceId] FOREIGN KEY ([WorkspaceId]) REFERENCES [Workspaces] ([WorkspaceId]) ON DELETE CASCADE
+);
+2026-06-08 00:34:52.626 +05:30 [INF] Executed DbCommand (10ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [WorkspaceMembers] (
+    [Id] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [WorkspaceId] uniqueidentifier NOT NULL,
+    [UserId] uniqueidentifier NOT NULL,
+    [MemberRole] nvarchar(50) NOT NULL DEFAULT N'Member',
+    [JoinedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [IsActive] bit NOT NULL,
+    CONSTRAINT [PK_WorkspaceMembers] PRIMARY KEY ([Id]),
+    CONSTRAINT [FK_WorkspaceMembers_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_WorkspaceMembers_Workspaces_WorkspaceId] FOREIGN KEY ([WorkspaceId]) REFERENCES [Workspaces] ([WorkspaceId]) ON DELETE CASCADE
+);
+2026-06-08 00:34:52.631 +05:30 [INF] Executed DbCommand (5ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [CallRooms] (
+    [CallRoomId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [WorkspaceId] uniqueidentifier NOT NULL,
+    [ChannelId] uniqueidentifier NOT NULL,
+    [CreatedBy] uniqueidentifier NOT NULL,
+    [IsActive] bit NOT NULL,
+    [EndedAt] datetime2 NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_CallRooms] PRIMARY KEY ([CallRoomId]),
+    CONSTRAINT [FK_CallRooms_Channels_ChannelId] FOREIGN KEY ([ChannelId]) REFERENCES [Channels] ([ChannelId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_CallRooms_Users_CreatedBy] FOREIGN KEY ([CreatedBy]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_CallRooms_Workspaces_WorkspaceId] FOREIGN KEY ([WorkspaceId]) REFERENCES [Workspaces] ([WorkspaceId]) ON DELETE NO ACTION
+);
+2026-06-08 00:34:52.635 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [ChannelMembers] (
+    [Id] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [ChannelId] uniqueidentifier NOT NULL,
+    [UserId] uniqueidentifier NOT NULL,
+    [AddedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_ChannelMembers] PRIMARY KEY ([Id]),
+    CONSTRAINT [FK_ChannelMembers_Channels_ChannelId] FOREIGN KEY ([ChannelId]) REFERENCES [Channels] ([ChannelId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_ChannelMembers_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION
+);
+2026-06-08 00:34:52.643 +05:30 [INF] Executed DbCommand (8ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [GameRooms] (
+    [GameRoomId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [WorkspaceId] uniqueidentifier NOT NULL,
+    [ChannelId] uniqueidentifier NOT NULL,
+    [GameType] nvarchar(50) NOT NULL DEFAULT N'Scribble',
+    [IsActive] bit NOT NULL,
+    [EndedAt] datetime2 NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_GameRooms] PRIMARY KEY ([GameRoomId]),
+    CONSTRAINT [FK_GameRooms_Channels_ChannelId] FOREIGN KEY ([ChannelId]) REFERENCES [Channels] ([ChannelId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_GameRooms_Workspaces_WorkspaceId] FOREIGN KEY ([WorkspaceId]) REFERENCES [Workspaces] ([WorkspaceId]) ON DELETE NO ACTION
+);
+2026-06-08 00:34:52.650 +05:30 [INF] Executed DbCommand (7ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Messages] (
+    [MessageId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [ChannelId] uniqueidentifier NOT NULL,
+    [SenderId] uniqueidentifier NOT NULL,
+    [Content] nvarchar(max) NOT NULL,
+    [ParentMessageId] uniqueidentifier NULL,
+    [IsDeleted] bit NOT NULL,
+    [DeletedAt] datetime2 NULL,
+    [EditedAt] datetime2 NULL,
+    [SentAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_Messages] PRIMARY KEY ([MessageId]),
+    CONSTRAINT [FK_Messages_Channels_ChannelId] FOREIGN KEY ([ChannelId]) REFERENCES [Channels] ([ChannelId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_Messages_Messages_ParentMessageId] FOREIGN KEY ([ParentMessageId]) REFERENCES [Messages] ([MessageId]),
+    CONSTRAINT [FK_Messages_Users_SenderId] FOREIGN KEY ([SenderId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION
+);
+2026-06-08 00:34:52.655 +05:30 [INF] Executed DbCommand (5ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [Complaints] (
+    [ComplaintId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [ReportedByUserId] uniqueidentifier NOT NULL,
+    [ReportedUserId] uniqueidentifier NULL,
+    [WorkspaceId] uniqueidentifier NULL,
+    [MessageId] uniqueidentifier NULL,
+    [Category] nvarchar(50) NOT NULL,
+    [Description] nvarchar(2000) NOT NULL,
+    [Status] nvarchar(20) NOT NULL DEFAULT N'Open',
+    [ResolvedByUserId] uniqueidentifier NULL,
+    [Resolution] nvarchar(1000) NULL,
+    [CreatedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    [UpdatedAt] datetime2 NULL,
+    CONSTRAINT [PK_Complaints] PRIMARY KEY ([ComplaintId]),
+    CONSTRAINT [FK_Complaints_Messages_MessageId] FOREIGN KEY ([MessageId]) REFERENCES [Messages] ([MessageId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_Complaints_Users_ReportedByUserId] FOREIGN KEY ([ReportedByUserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_Complaints_Users_ReportedUserId] FOREIGN KEY ([ReportedUserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_Complaints_Users_ResolvedByUserId] FOREIGN KEY ([ResolvedByUserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_Complaints_Workspaces_WorkspaceId] FOREIGN KEY ([WorkspaceId]) REFERENCES [Workspaces] ([WorkspaceId]) ON DELETE NO ACTION
+);
+2026-06-08 00:34:52.658 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE [MessageReactions] (
+    [ReactionId] uniqueidentifier NOT NULL DEFAULT (NEWSEQUENTIALID()),
+    [MessageId] uniqueidentifier NOT NULL,
+    [UserId] uniqueidentifier NOT NULL,
+    [Emoji] nvarchar(10) NOT NULL,
+    [ReactedAt] datetime2 NOT NULL DEFAULT (GETUTCDATE()),
+    CONSTRAINT [PK_MessageReactions] PRIMARY KEY ([ReactionId]),
+    CONSTRAINT [FK_MessageReactions_Messages_MessageId] FOREIGN KEY ([MessageId]) REFERENCES [Messages] ([MessageId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_MessageReactions_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([UserId]) ON DELETE NO ACTION
+);
+2026-06-08 00:34:52.742 +05:30 [INF] Executed DbCommand (84ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'TemplateId', N'CreatedAt', N'HtmlBody', N'IsActive', N'PlainBody', N'Subject', N'TemplateKey', N'UpdatedAt') AND [object_id] = OBJECT_ID(N'[EmailTemplates]'))
+    SET IDENTITY_INSERT [EmailTemplates] ON;
+INSERT INTO [EmailTemplates] ([TemplateId], [CreatedAt], [HtmlBody], [IsActive], [PlainBody], [Subject], [TemplateKey], [UpdatedAt])
+VALUES (1, '2025-01-01T00:00:00.0000000Z', CONCAT(CAST(N'<h2>Welcome to Cobo, {{FullName}}!</h2>' AS nvarchar(max)), nchar(10), N'<p>Please verify your email address by clicking the link below. This link expires in 24 hours.</p>', nchar(10), N'<p><a href="{{VerifyUrl}}" style="background:#6366f1;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;">Verify Email</a></p>', nchar(10), N'<p>If you didn''t create an account, you can safely ignore this email.</p>'), CAST(1 AS bit), N'Welcome to Cobo, {{FullName}}! Verify your email: {{VerifyUrl}}', N'Verify your Cobo email address', N'email_verification', NULL),
+(2, '2025-01-01T00:00:00.0000000Z', CONCAT(CAST(N'<h2>Password Reset Request</h2>' AS nvarchar(max)), nchar(10), N'<p>Hi {{FullName}}, we received a request to reset your password.</p>', nchar(10), N'<p><a href="{{ResetUrl}}" style="background:#6366f1;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;">Reset Password</a></p>', nchar(10), N'<p>This link expires in 1 hour. If you didn''t request this, please ignore this email.</p>'), CAST(1 AS bit), N'Reset your password: {{ResetUrl}}', N'Reset your Cobo password', N'password_reset', NULL),
+(3, '2025-01-01T00:00:00.0000000Z', CONCAT(CAST(N'<h2>You''re invited!</h2>' AS nvarchar(max)), nchar(10), N'<p>{{InviterName}} has invited you to join the <strong>{{WorkspaceName}}</strong> workspace on Cobo.</p>', nchar(10), N'<p>', nchar(10), N'    <a href="{{AcceptUrl}}" style="background:#22c55e;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;margin-right:8px;">Accept Invite</a>', nchar(10), N'    <a href="{{DeclineUrl}}" style="background:#ef4444;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;">Decline</a>', nchar(10), N'</p>', nchar(10), N'<p>This invitation expires in 72 hours.</p>'), CAST(1 AS bit), N'{{InviterName}} invited you to {{WorkspaceName}}. Accept: {{AcceptUrl}} | Decline: {{DeclineUrl}}', N'You''ve been invited to {{WorkspaceName}} on Cobo', N'workspace_invite', NULL),
+(4, '2025-01-01T00:00:00.0000000Z', CONCAT(CAST(N'<h2>Subscription Activated 🎉</h2>' AS nvarchar(max)), nchar(10), N'<p>Hi {{FullName}}, your <strong>{{PlanName}}</strong> subscription is now active.</p>', nchar(10), N'<p>Your subscription is valid until <strong>{{EndDate}}</strong>.</p>', nchar(10), N'<p>Enjoy your premium features on Cobo!</p>'), CAST(1 AS bit), N'Hi {{FullName}}, your {{PlanName}} subscription is active until {{EndDate}}.', N'Your {{PlanName}} subscription is now active!', N'subscription_activated', NULL),
+(5, '2025-01-01T00:00:00.0000000Z', CONCAT(CAST(N'<h2>Subscription Cancelled</h2>' AS nvarchar(max)), nchar(10), N'<p>Hi {{FullName}}, your <strong>{{PlanName}}</strong> subscription has been cancelled.</p>', nchar(10), N'<p>You can resubscribe at any time from the Plans page.</p>'), CAST(1 AS bit), N'Hi {{FullName}}, your {{PlanName}} subscription has been cancelled.', N'Your Cobo subscription has been cancelled', N'subscription_cancelled', NULL),
+(6, '2025-01-01T00:00:00.0000000Z', CONCAT(CAST(N'<h2>Subscription Expiring Soon</h2>' AS nvarchar(max)), nchar(10), N'<p>Hi {{FullName}}, your subscription expires on <strong>{{ExpiryDate}}</strong>.</p>', nchar(10), N'<p><a href="{{RenewUrl}}" style="background:#6366f1;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;">Renew Now</a></p>'), CAST(1 AS bit), N'Hi {{FullName}}, your subscription expires on {{ExpiryDate}}. Renew: {{RenewUrl}}', N'Your Cobo subscription expires soon', N'subscription_expiring_soon', NULL),
+(7, '2025-01-01T00:00:00.0000000Z', CONCAT(CAST(N'<h2>Complaint Resolved</h2>' AS nvarchar(max)), nchar(10), N'<p>Hi {{FullName}}, your complaint has been reviewed and resolved.</p>', nchar(10), N'<p><strong>Resolution:</strong> {{Resolution}}</p>', nchar(10), N'<p>Thank you for helping keep Cobo safe.</p>'), CAST(1 AS bit), N'Hi {{FullName}}, your complaint has been resolved. Resolution: {{Resolution}}', N'Your complaint has been resolved', N'complaint_resolved', NULL),
+(8, '2025-01-01T00:00:00.0000000Z', CONCAT(CAST(N'<h2>Account Deactivated</h2>' AS nvarchar(max)), nchar(10), N'<p>Hi {{FullName}}, your Cobo account has been deactivated by an administrator.</p>', nchar(10), N'<p>If you believe this is an error, please contact support.</p>'), CAST(1 AS bit), N'Hi {{FullName}}, your Cobo account has been deactivated.', N'Your Cobo account has been deactivated', N'account_deactivated', NULL),
+(9, '2025-01-01T00:00:00.0000000Z', CONCAT(CAST(N'<h2>Email Verification (Resent)</h2>' AS nvarchar(max)), nchar(10), N'<p>Hi {{FullName}}, here''s your new verification link. This link expires in 24 hours.</p>', nchar(10), N'<p><a href="{{VerifyUrl}}" style="background:#6366f1;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;">Verify Email</a></p>'), CAST(1 AS bit), N'Hi {{FullName}}, verify your email: {{VerifyUrl}}', N'Verify your Cobo email address (resent)', N'email_verification_resend', NULL);
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'TemplateId', N'CreatedAt', N'HtmlBody', N'IsActive', N'PlainBody', N'Subject', N'TemplateKey', N'UpdatedAt') AND [object_id] = OBJECT_ID(N'[EmailTemplates]'))
+    SET IDENTITY_INSERT [EmailTemplates] OFF;
+2026-06-08 00:34:52.770 +05:30 [INF] Executed DbCommand (27ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'PlanId', N'DurationDays', N'Features', N'IsActive', N'MaxMembers', N'PlanName', N'StripePriceId') AND [object_id] = OBJECT_ID(N'[Plans]'))
+    SET IDENTITY_INSERT [Plans] ON;
+INSERT INTO [Plans] ([PlanId], [DurationDays], [Features], [IsActive], [MaxMembers], [PlanName], [StripePriceId])
+VALUES (1, 36500, N'["text_channels","workspace_creation","basic_messaging"]', CAST(1 AS bit), 5, N'Free', NULL);
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'PlanId', N'DurationDays', N'Features', N'IsActive', N'MaxMembers', N'PlanName', N'StripePriceId') AND [object_id] = OBJECT_ID(N'[Plans]'))
+    SET IDENTITY_INSERT [Plans] OFF;
+2026-06-08 00:34:52.796 +05:30 [INF] Executed DbCommand (26ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'PlanId', N'DurationDays', N'Features', N'IsActive', N'MaxMembers', N'PlanName', N'Price', N'StripePriceId') AND [object_id] = OBJECT_ID(N'[Plans]'))
+    SET IDENTITY_INSERT [Plans] ON;
+INSERT INTO [Plans] ([PlanId], [DurationDays], [Features], [IsActive], [MaxMembers], [PlanName], [Price], [StripePriceId])
+VALUES (2, 30, N'["text_channels","workspace_creation","basic_messaging","private_channels","message_reactions","priority_support"]', CAST(1 AS bit), 50, N'Pro', 499.0, N'price_pro_inr_monthly'),
+(3, 30, N'["text_channels","workspace_creation","basic_messaging","private_channels","message_reactions","voice_channels","game_rooms","priority_support","custom_branding","audit_logs"]', CAST(1 AS bit), NULL, N'Enterprise', 1499.0, N'price_enterprise_inr_monthly');
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'PlanId', N'DurationDays', N'Features', N'IsActive', N'MaxMembers', N'PlanName', N'Price', N'StripePriceId') AND [object_id] = OBJECT_ID(N'[Plans]'))
+    SET IDENTITY_INSERT [Plans] OFF;
+2026-06-08 00:34:52.825 +05:30 [INF] Executed DbCommand (29ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'RoleId', N'RoleName') AND [object_id] = OBJECT_ID(N'[Roles]'))
+    SET IDENTITY_INSERT [Roles] ON;
+INSERT INTO [Roles] ([RoleId], [RoleName])
+VALUES (1, N'PlatformAdmin'),
+(2, N'WorkspaceOwner'),
+(3, N'Moderator'),
+(4, N'Member'),
+(5, N'PremiumMember');
+IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'RoleId', N'RoleName') AND [object_id] = OBJECT_ID(N'[Roles]'))
+    SET IDENTITY_INSERT [Roles] OFF;
+2026-06-08 00:34:52.829 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_AuditLogs_Action] ON [AuditLogs] ([Action]);
+2026-06-08 00:34:52.833 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_AuditLogs_CreatedAt] ON [AuditLogs] ([CreatedAt]);
+2026-06-08 00:34:52.835 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_AuditLogs_UserId] ON [AuditLogs] ([UserId]);
+2026-06-08 00:34:52.837 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_CallRooms_ChannelId] ON [CallRooms] ([ChannelId]);
+2026-06-08 00:34:52.839 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_CallRooms_CreatedBy] ON [CallRooms] ([CreatedBy]);
+2026-06-08 00:34:52.841 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_CallRooms_WorkspaceId] ON [CallRooms] ([WorkspaceId]);
+2026-06-08 00:34:52.843 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX [IX_ChannelMembers_ChannelId_UserId] ON [ChannelMembers] ([ChannelId], [UserId]);
+2026-06-08 00:34:52.847 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_ChannelMembers_UserId] ON [ChannelMembers] ([UserId]);
+2026-06-08 00:34:52.849 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_Channels_CreatedBy] ON [Channels] ([CreatedBy]);
+2026-06-08 00:34:52.850 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_Channels_WorkspaceId] ON [Channels] ([WorkspaceId]);
+2026-06-08 00:34:52.852 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_Complaints_MessageId] ON [Complaints] ([MessageId]);
+2026-06-08 00:34:52.855 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_Complaints_ReportedByUserId] ON [Complaints] ([ReportedByUserId]);
+2026-06-08 00:34:52.857 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_Complaints_ReportedUserId] ON [Complaints] ([ReportedUserId]);
+2026-06-08 00:34:52.868 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_Complaints_ResolvedByUserId] ON [Complaints] ([ResolvedByUserId]);
+2026-06-08 00:34:52.899 +05:30 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_Complaints_WorkspaceId] ON [Complaints] ([WorkspaceId]);
+2026-06-08 00:34:52.901 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_EmailLogs_RelatedUserId] ON [EmailLogs] ([RelatedUserId]);
+2026-06-08 00:34:52.909 +05:30 [INF] Executed DbCommand (7ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX [IX_EmailTemplates_TemplateKey] ON [EmailTemplates] ([TemplateKey]);
+2026-06-08 00:34:52.913 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_GameRooms_ChannelId] ON [GameRooms] ([ChannelId]);
+2026-06-08 00:34:52.917 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_GameRooms_WorkspaceId] ON [GameRooms] ([WorkspaceId]);
+2026-06-08 00:34:52.922 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX [IX_MessageReactions_MessageId_UserId_Emoji] ON [MessageReactions] ([MessageId], [UserId], [Emoji]);
+2026-06-08 00:34:52.931 +05:30 [INF] Executed DbCommand (10ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_MessageReactions_UserId] ON [MessageReactions] ([UserId]);
+2026-06-08 00:34:52.936 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_Messages_ChannelId_SentAt] ON [Messages] ([ChannelId], [SentAt]);
+2026-06-08 00:34:52.938 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_Messages_ParentMessageId] ON [Messages] ([ParentMessageId]);
+2026-06-08 00:34:52.940 +05:30 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_Messages_SenderId] ON [Messages] ([SenderId]);
+2026-06-08 00:34:52.946 +05:30 [INF] Executed DbCommand (5ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX [IX_Plans_PlanName] ON [Plans] ([PlanName]);
+2026-06-08 00:34:52.950 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX [IX_RefreshTokens_Token] ON [RefreshTokens] ([Token]);
+2026-06-08 00:34:52.957 +05:30 [INF] Executed DbCommand (7ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_RefreshTokens_UserId] ON [RefreshTokens] ([UserId]);
+2026-06-08 00:34:52.967 +05:30 [INF] Executed DbCommand (10ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX [IX_Roles_RoleName] ON [Roles] ([RoleName]);
+2026-06-08 00:34:52.971 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX [IX_StripeEvents_StripeEventId] ON [StripeEvents] ([StripeEventId]);
+2026-06-08 00:34:52.975 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_Subscriptions_PlanId] ON [Subscriptions] ([PlanId]);
+2026-06-08 00:34:52.983 +05:30 [INF] Executed DbCommand (7ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_Subscriptions_UserId] ON [Subscriptions] ([UserId]);
+2026-06-08 00:34:52.986 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_UserRoles_RoleId] ON [UserRoles] ([RoleId]);
+2026-06-08 00:34:52.990 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX [IX_Users_Email] ON [Users] ([Email]);
+2026-06-08 00:34:53.000 +05:30 [INF] Executed DbCommand (9ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_UserSessions_UserId] ON [UserSessions] ([UserId]);
+2026-06-08 00:34:53.006 +05:30 [INF] Executed DbCommand (5ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_WorkspaceInvitations_InvitedByUserId] ON [WorkspaceInvitations] ([InvitedByUserId]);
+2026-06-08 00:34:53.009 +05:30 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX [IX_WorkspaceInvitations_Token] ON [WorkspaceInvitations] ([Token]);
+2026-06-08 00:34:53.014 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_WorkspaceInvitations_WorkspaceId] ON [WorkspaceInvitations] ([WorkspaceId]);
+2026-06-08 00:34:53.021 +05:30 [INF] Executed DbCommand (7ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_WorkspaceMembers_UserId] ON [WorkspaceMembers] ([UserId]);
+2026-06-08 00:34:53.031 +05:30 [INF] Executed DbCommand (10ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE UNIQUE INDEX [IX_WorkspaceMembers_WorkspaceId_UserId] ON [WorkspaceMembers] ([WorkspaceId], [UserId]);
+2026-06-08 00:34:53.036 +05:30 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX [IX_Workspaces_OwnerId] ON [Workspaces] ([OwnerId]);
+2026-06-08 00:34:53.047 +05:30 [INF] Executed DbCommand (11ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20260607190415_InitialCreate', N'8.0.11');

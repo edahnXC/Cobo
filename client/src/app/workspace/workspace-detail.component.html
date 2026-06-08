@@ -1,0 +1,551 @@
+<div class="app-layout" (click)="showSettingsDropdown.set(false); showEmojiPickerForMsgId.set(null)">
+  <!-- SIDEBAR -->
+  <aside class="sidebar glass-panel">
+    <div class="workspace-header" (click)="$event.stopPropagation(); showSettingsDropdown.update(v => !v)">
+      <div class="ws-logo-small">🌐</div>
+      <div class="ws-title-wrapper">
+        <h2 class="ws-title">{{ workspace()?.name || 'Workspace' }}</h2>
+        <span class="ws-role">{{ myRole() }}</span>
+      </div>
+      <span class="dropdown-arrow">▼</span>
+
+      <!-- Settings Dropdown -->
+      <div class="dropdown-menu glass-panel" *ngIf="showSettingsDropdown()">
+        <button (click)="openInviteModal()" *ngIf="isOwnerOrMod()">✉️ Invite Member</button>
+        <button (click)="openMembersModal()">👥 View Members</button>
+        <button (click)="openInvitesModal()" *ngIf="isOwnerOrMod()">📬 View Invitations</button>
+        <button (click)="openReportWsModal()">⚠️ Report Workspace</button>
+        <div class="dropdown-divider" *ngIf="myRole() === 'Owner'"></div>
+        <button (click)="onDeleteWorkspace()" class="delete-btn" *ngIf="myRole() === 'Owner'">🗑️ Delete Workspace</button>
+      </div>
+    </div>
+
+    <!-- CHANNELS -->
+    <div class="channels-section">
+      <div class="section-title">
+        <span>CHANNELS</span>
+        <button (click)="openCreateChannelModal()" *ngIf="isOwnerOrMod()" title="Create Channel">+</button>
+      </div>
+
+      <div class="channels-list">
+        <div 
+          *ngFor="let ch of channels()" 
+          [class.active]="activeChannelId() === ch.channelId"
+          (click)="selectChannel(ch)"
+          class="channel-item"
+        >
+          <span class="channel-icon">
+            <span *ngIf="ch.channelType === 'text'">#</span>
+            <span *ngIf="ch.channelType === 'voice'">🔊</span>
+            <span *ngIf="ch.channelType === 'game'">🎮</span>
+          </span>
+          <span class="channel-name">{{ ch.channelName }}</span>
+          
+          <!-- Locked status badge -->
+          <span class="lock-icon" *ngIf="ch.isPremium && !authState.isPremium()" title="Premium only">🔒</span>
+          <span class="star-icon" *ngIf="ch.isPremium && authState.isPremium()" title="Premium Channel">⭐</span>
+
+          <!-- Delete channel icon -->
+          <button 
+            *ngIf="isOwnerOrMod()" 
+            (click)="deleteChannel(ch.channelId, $event)" 
+            class="delete-ch-btn"
+            title="Delete Channel"
+          >
+            &times;
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- USER FOOTER -->
+    <footer class="sidebar-footer">
+      <div class="footer-avatar">
+        {{ authState.user()?.fullName?.substring(0,2)?.toUpperCase() }}
+      </div>
+      <div class="footer-user-info">
+        <span class="user-display-name">{{ authState.user()?.fullName }}</span>
+        <span class="user-display-status">{{ authState.isPremium() ? 'Pro Member' : 'Free Account' }}</span>
+      </div>
+      <a routerLink="/workspaces" class="home-icon-btn" title="Back to Workspaces">📂</a>
+    </footer>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <main class="main-content">
+    <div *ngIf="loadingWorkspace()" class="loading-state-main">
+      <div class="spinner"></div>
+      <p>Loading your collaborative environment...</p>
+    </div>
+
+    <div *ngIf="!loadingWorkspace() && activeChannel()" class="channel-view">
+      <!-- Channel Header -->
+      <header class="channel-header glass-panel">
+        <div class="ch-header-title">
+          <span class="ch-prefix">
+            <span *ngIf="activeChannel()?.channelType === 'text'">#</span>
+            <span *ngIf="activeChannel()?.channelType === 'voice'">🔊</span>
+            <span *ngIf="activeChannel()?.channelType === 'game'">🎮</span>
+          </span>
+          <h2>{{ activeChannel()?.channelName }}</h2>
+          <span class="ch-badge" *ngIf="activeChannel()?.isPremium">PREMIUM</span>
+        </div>
+        <div class="ch-actions">
+          <button (click)="openReportWsModal()" class="report-ws-action-btn">⚠️ Report</button>
+        </div>
+      </header>
+
+      <!-- Active Content Pane (Premium Subscription Gate) -->
+      <div class="content-body">
+        
+        <!-- Premium Gate Overlay -->
+        <div class="premium-gate-overlay glass-panel" *ngIf="activeChannel()?.isPremium && !authState.isPremium()">
+          <span class="gate-icon">💎</span>
+          <h3>Premium Channel Locked</h3>
+          <p>Upgrade to Cobo Pro or Enterprise to access voice calls, real-time drawing games, and unlimited teammates.</p>
+          <a routerLink="/plans" class="gradient-btn upgrade-btn">Upgrade Plan Now</a>
+        </div>
+
+        <ng-container *ngIf="!activeChannel()?.isPremium || authState.isPremium()">
+          
+          <!-- TEXT CHANNEL -->
+          <div class="text-channel-container" *ngIf="activeChannel()?.channelType === 'text'">
+            <!-- Messages Log -->
+            <div class="messages-log" #messageLog (scroll)="onScroll($event)">
+              <div class="load-more-container" *ngIf="hasMoreMessages()">
+                <span class="load-more-spinner"></span>
+                <span>Scroll up to load older messages</span>
+              </div>
+              
+              <div *ngIf="messages().length === 0" class="no-messages">
+                <p>Welcome to the beginning of the #{{ activeChannel()?.channelName }} channel!</p>
+              </div>
+
+              <!-- Message Item -->
+              <div 
+                *ngFor="let msg of messages()" 
+                class="message-item"
+                [class.deleted]="msg.isDeleted"
+              >
+                <div class="msg-avatar">
+                  {{ msg.senderName.substring(0,2).toUpperCase() }}
+                </div>
+                <div class="msg-content-wrapper">
+                  <div class="msg-meta">
+                    <span class="msg-sender">{{ msg.senderName }}</span>
+                    <span class="msg-time">{{ msg.sentAt | date:'shortTime' }}</span>
+                    <span class="edited-tag" *ngIf="msg.editedAt && !msg.isDeleted">(edited)</span>
+                  </div>
+
+                  <!-- Msg edit form -->
+                  <div class="msg-body" *ngIf="editingMessageId() !== msg.messageId">
+                    {{ msg.content }}
+                  </div>
+                  <div class="edit-box-wrapper" *ngIf="editingMessageId() === msg.messageId">
+                    <input type="text" [(ngModel)]="editedMsgContent" class="form-input edit-input" />
+                    <div class="edit-actions">
+                      <button (click)="saveEdit()" class="btn-save">Save</button>
+                      <button (click)="cancelEdit()" class="btn-cancel">Cancel</button>
+                    </div>
+                  </div>
+
+                  <!-- Reactions -->
+                  <div class="msg-reactions" *ngIf="msg.reactions.length > 0 && !msg.isDeleted">
+                    <button 
+                      *ngFor="let react of msg.reactions" 
+                      (click)="reactToMessage(msg.messageId, react.emoji)"
+                      [class.active]="react.reactedByMe"
+                      class="reaction-badge"
+                    >
+                      <span class="emoji">{{ react.emoji }}</span>
+                      <span class="count">{{ react.count }}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Hover actions -->
+                <div class="msg-hover-actions" *ngIf="!msg.isDeleted">
+                  <!-- Add emoji reaction picker -->
+                  <button (click)="$event.stopPropagation(); toggleEmojiPicker(msg.messageId)" title="Add Reaction">😀</button>
+                  <button (click)="startEditing(msg)" *ngIf="msg.senderId === authState.user()?.userId" title="Edit Message">✏️</button>
+                  <button (click)="deleteMessage(msg.messageId)" *ngIf="msg.senderId === authState.user()?.userId || isOwnerOrMod()" title="Delete Message">🗑️</button>
+                  <button (click)="openReportMsgModal(msg)" title="Report Message">⚠️</button>
+
+                  <!-- Small Emoji Dropdown -->
+                  <div class="mini-emoji-picker glass-panel" *ngIf="showEmojiPickerForMsgId() === msg.messageId" (click)="$event.stopPropagation()">
+                    <span (click)="reactToMessage(msg.messageId, '👍')">👍</span>
+                    <span (click)="reactToMessage(msg.messageId, '❤️')">❤️</span>
+                    <span (click)="reactToMessage(msg.messageId, '🔥')">🔥</span>
+                    <span (click)="reactToMessage(msg.messageId, '😂')">😂</span>
+                    <span (click)="reactToMessage(msg.messageId, '😮')">😮</span>
+                    <span (click)="reactToMessage(msg.messageId, '😢')">😢</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Typing Bar -->
+            <div class="typing-bar-container">
+              <form (ngSubmit)="sendChatMessage()" class="typing-form">
+                <input 
+                  type="text" 
+                  [(ngModel)]="newMsgContent" 
+                  name="content"
+                  placeholder="Message #{{ activeChannel()?.channelName }}" 
+                  class="form-input chat-input" 
+                />
+                <button type="submit" [disabled]="!newMsgContent.trim()" class="gradient-btn send-btn">Send</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- VOICE CHANNEL -->
+          <div class="voice-channel-container" *ngIf="activeChannel()?.channelType === 'voice'">
+            <div class="voice-layout">
+              <div class="voice-grid">
+                <div 
+                  *ngFor="let part of voiceParticipants()" 
+                  class="voice-member-card glass-panel"
+                  [class.speaking]="part.isSpeaking"
+                >
+                  <div class="voice-avatar-lg">
+                    {{ part.fullName.substring(0,2).toUpperCase() }}
+                    <span class="speaking-glow" *ngIf="part.isSpeaking"></span>
+                  </div>
+                  <div class="voice-member-info">
+                    <span class="voice-member-name">{{ part.fullName }}</span>
+                    <span class="voice-member-status">
+                      <span *ngIf="part.isMuted">🚫 Muted</span>
+                      <span *ngIf="!part.isMuted && part.isSpeaking" style="color: var(--success)">🎙️ Speaking</span>
+                      <span *ngIf="!part.isMuted && !part.isSpeaking">Connected</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Voice Controls Bar -->
+              <div class="voice-controls glass-panel">
+                <button 
+                  *ngIf="!inVoiceCall()" 
+                  (click)="joinVoiceCall()" 
+                  class="gradient-btn join-voice-btn"
+                >
+                  Join Voice Call
+                </button>
+                
+                <ng-container *ngIf="inVoiceCall()">
+                  <button 
+                    (click)="toggleMic()" 
+                    class="btn-secondary mute-mic-btn"
+                    [class.mic-muted]="isMicMuted()"
+                  >
+                    {{ isMicMuted() ? '🎙️ Unmute Mic' : '🚫 Mute Mic' }}
+                  </button>
+                  <button 
+                    (click)="leaveVoiceCall()" 
+                    class="btn-danger disconnect-voice-btn"
+                  >
+                    Disconnect
+                  </button>
+                </ng-container>
+              </div>
+            </div>
+          </div>
+
+          <!-- GAME CHANNEL (Scribble Board) -->
+          <div class="game-channel-container" *ngIf="activeChannel()?.channelType === 'game'">
+            <div class="game-lobby" *ngIf="!gameIsActive()">
+              <div class="glass-panel lobby-card">
+                <h2>Scribble Drawing Game</h2>
+                <p>One player draws, others guess. Earn points for speed and accuracy!</p>
+                <button (click)="startGame()" class="gradient-btn start-game-btn">Start Game</button>
+              </div>
+            </div>
+
+            <div class="game-board-layout" *ngIf="gameIsActive()">
+              <!-- Scoreboard -->
+              <div class="game-scoreboard glass-panel">
+                <h3>Players</h3>
+                <div class="player-list">
+                  <div 
+                    *ngFor="let p of gamePlayers()" 
+                    class="player-score-item"
+                    [class.drawer]="p.userId === gameDrawerId()"
+                    [class.guessed]="p.hasGuessed"
+                  >
+                    <span class="player-name">
+                      {{ p.fullName }} 
+                      <span *ngIf="p.userId === gameDrawerId()">✏️</span>
+                      <span *ngIf="p.hasGuessed">✅</span>
+                    </span>
+                    <span class="player-score">{{ p.score }} pts</span>
+                  </div>
+                </div>
+                <button (click)="exitGame()" class="exit-game-btn">Exit Room</button>
+              </div>
+
+              <!-- Canvas / Board Area -->
+              <div class="game-play-area">
+                <div class="game-status-bar glass-panel">
+                  <div class="game-time">⏱️ {{ gameTimeLeft() }}s</div>
+                  <div class="game-status-msg">{{ gameStatusText() }}</div>
+                  <div class="game-hint">{{ gameWordHint() }}</div>
+                </div>
+
+                <!-- Word chooser overlay -->
+                <div class="word-selector-overlay glass-panel" *ngIf="isDrawingTurn() && gameWordsToSelect().length > 0">
+                  <h3>Select a Word to Draw</h3>
+                  <div class="words-grid">
+                    <button 
+                      *ngFor="let w of gameWordsToSelect()" 
+                      (click)="selectGameWord(w)"
+                      class="gradient-btn word-btn"
+                    >
+                      {{ w }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Canvas Component -->
+                <div class="canvas-wrapper glass-panel">
+                  <canvas 
+                    #gameCanvas 
+                    width="600" 
+                    height="400" 
+                    (mousedown)="onCanvasMouseDown($event)"
+                    (mousemove)="onCanvasMouseMove($event)"
+                    [class.drawing-active]="isDrawingTurn()"
+                  ></canvas>
+                </div>
+
+                <!-- Canvas Color/Brush Settings -->
+                <div class="canvas-controls glass-panel" *ngIf="isDrawingTurn()">
+                  <div class="colors">
+                    <button (click)="canvasColor = '#f5f6f9'" class="color-btn white active" [class.active]="canvasColor === '#f5f6f9'"></button>
+                    <button (click)="canvasColor = '#ff1744'" class="color-btn red" [class.active]="canvasColor === '#ff1744'"></button>
+                    <button (click)="canvasColor = '#00b0ff'" class="color-btn blue" [class.active]="canvasColor === '#00b0ff'"></button>
+                    <button (click)="canvasColor = '#00e676'" class="color-btn green" [class.active]="canvasColor === '#00e676'"></button>
+                    <button (click)="canvasColor = '#ffea00'" class="color-btn yellow" [class.active]="canvasColor === '#ffea00'"></button>
+                  </div>
+                  <div class="brush-sizes">
+                    <button (click)="brushSize = 2" [class.active]="brushSize === 2">Small</button>
+                    <button (click)="brushSize = 4" [class.active]="brushSize === 4">Medium</button>
+                    <button (click)="brushSize = 8" [class.active]="brushSize === 8">Thick</button>
+                  </div>
+                  <button (click)="clearCanvas(); messageService.sendGameEvent(activeChannelId()!, 'DRAW_CLEAR', '{}')" class="btn-secondary">Clear Canvas</button>
+                </div>
+              </div>
+
+              <!-- Game Chat / Logs -->
+              <div class="game-chat glass-panel">
+                <h3>Guesses & System Logs</h3>
+                <div class="game-logs">
+                  <div *ngFor="let log of gameLogs()" class="game-log-line">
+                    {{ log }}
+                  </div>
+                </div>
+                <div class="guess-input-container" *ngIf="!isDrawingTurn()">
+                  <input 
+                    type="text" 
+                    #guessInput
+                    (keydown.enter)="submitGuess(guessInput)"
+                    placeholder="Type your guess..." 
+                    class="form-input" 
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </ng-container>
+      </div>
+    </div>
+
+    <div *ngIf="!loadingWorkspace() && !activeChannel()" class="empty-state-main glass-panel">
+      <span class="empty-icon-main">💬</span>
+      <h3>No Channels Configured</h3>
+      <p>This workspace is invite-only, but contains no public/accessible communication rooms.</p>
+      <button (click)="openCreateChannelModal()" *ngIf="isOwnerOrMod()" class="gradient-btn" style="margin-top: 15px;">Create Channel</button>
+    </div>
+  </main>
+
+  <!-- ─── MODALS ─── -->
+
+  <!-- Create Channel Modal -->
+  <div class="modal-backdrop" *ngIf="showCreateChannelModal()" (click)="showCreateChannelModal.set(false)">
+    <div class="glass-panel modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Create Channel</h3>
+        <button (click)="showCreateChannelModal.set(false)" class="close-btn">&times;</button>
+      </div>
+      <form (ngSubmit)="onCreateChannel()">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="cName">Channel Name</label>
+            <input type="text" id="cName" name="cName" [(ngModel)]="newChannelName" required class="form-input" placeholder="e.g. general, help-deck" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cType">Type</label>
+            <select id="cType" name="cType" [(ngModel)]="newChannelType" class="form-input">
+              <option value="text">💬 Text Thread</option>
+              <option value="voice">🔊 Voice Room</option>
+              <option value="game">🎮 Scribble Game Room</option>
+            </select>
+          </div>
+          <div class="form-group checkbox-group">
+            <label>
+              <input type="checkbox" name="cIsPrivate" [(ngModel)]="newChannelIsPrivate" />
+              Private Channel (Invite only)
+            </label>
+          </div>
+          <div class="form-group checkbox-group">
+            <label>
+              <input type="checkbox" name="cIsPremium" [(ngModel)]="newChannelIsPremium" />
+              Premium Access (Requires subscription)
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" (click)="showCreateChannelModal.set(false)" class="btn-secondary">Cancel</button>
+          <button type="submit" [disabled]="!newChannelName.trim()" class="gradient-btn">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Invite Member Modal -->
+  <div class="modal-backdrop" *ngIf="showInviteModal()" (click)="showInviteModal.set(false)">
+    <div class="glass-panel modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Invite Teammate</h3>
+        <button (click)="showInviteModal.set(false)" class="close-btn">&times;</button>
+      </div>
+      <form (ngSubmit)="onSendInvite()">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="iEmail">Teammate Email Address</label>
+            <input type="email" id="iEmail" name="iEmail" [(ngModel)]="inviteEmail" required class="form-input" placeholder="teammate@company.com" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="iRole">Role Assignment</label>
+            <select id="iRole" name="iRole" [(ngModel)]="inviteRole" class="form-input">
+              <option value="Member">Member</option>
+              <option value="Moderator">Moderator</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" (click)="showInviteModal.set(false)" class="btn-secondary">Cancel</button>
+          <button type="submit" [disabled]="!inviteEmail.trim()" class="gradient-btn">Send Invite Link</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- View Members Modal -->
+  <div class="modal-backdrop" *ngIf="showMembersModal()" (click)="showMembersModal.set(false)">
+    <div class="glass-panel modal-card list-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Teammates</h3>
+        <button (click)="showMembersModal.set(false)" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body scroll-body">
+        <div *ngFor="let m of members()" class="modal-list-item">
+          <div class="item-avatar">{{ m.fullName.substring(0,2).toUpperCase() }}</div>
+          <div class="item-info">
+            <h4>{{ m.fullName }}</h4>
+            <p>{{ m.email }}</p>
+          </div>
+          <div class="item-actions">
+            <!-- Edit role if Owner -->
+            <select 
+              *ngIf="myRole() === 'Owner' && m.userId !== authState.user()?.userId"
+              (change)="changeMemberRole(m.userId, $any($event.target).value)"
+              class="form-input select-sm"
+            >
+              <option value="Member" [selected]="m.memberRole === 'Member'">Member</option>
+              <option value="Moderator" [selected]="m.memberRole === 'Moderator'">Moderator</option>
+            </select>
+            <span class="badge badge-primary" *ngIf="m.memberRole === 'Owner' || myRole() !== 'Owner'">{{ m.memberRole }}</span>
+
+            <!-- Remove Member -->
+            <button 
+              *ngIf="isOwnerOrMod() && m.userId !== authState.user()?.userId && m.memberRole !== 'Owner'" 
+              (click)="removeMember(m.userId)" 
+              class="btn-danger-sm"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Invitations Modal -->
+  <div class="modal-backdrop" *ngIf="showInvitesModal()" (click)="showInvitesModal.set(false)">
+    <div class="glass-panel modal-card list-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Pending Workspace Invites</h3>
+        <button (click)="showInvitesModal.set(false)" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body scroll-body">
+        <div *ngIf="invitations().length === 0" class="no-items">
+          <p>No pending invitations.</p>
+        </div>
+        <div *ngFor="let inv of invitations()" class="modal-list-item">
+          <div class="item-info">
+            <h4>{{ inv.invitedEmail }}</h4>
+            <p>Invited as {{ inv.status }} · Expires {{ inv.expiresAt | date:'shortDate' }}</p>
+          </div>
+          <div class="item-actions">
+            <button (click)="revokeInvitation(inv.invitationId)" class="btn-danger-sm">Revoke</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submit Complaint / Report Modal -->
+  <div class="modal-backdrop" *ngIf="showReportModal()" (click)="showReportModal.set(false)">
+    <div class="glass-panel modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>File a Safety Report</h3>
+        <button (click)="showReportModal.set(false)" class="close-btn">&times;</button>
+      </div>
+      <form (ngSubmit)="onSubmitComplaint()">
+        <div class="modal-body">
+          <p class="report-info">Reports are processed confidentially by the platform security administrators.</p>
+          
+          <div class="form-group">
+            <label class="form-label" for="rCategory">Category of Violation</label>
+            <select id="rCategory" name="rCategory" [(ngModel)]="reportCategory" class="form-input">
+              <option value="Harassment">Harassment / Bullying</option>
+              <option value="Spam">Spam / Advertising</option>
+              <option value="InappropriateContent">Inappropriate Content</option>
+              <option value="TechnicalIssue">Technical Bug / Vulnerability</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="rDesc">Incident Description</label>
+            <textarea 
+              id="rDesc" 
+              name="rDesc" 
+              [(ngModel)]="reportDescription" 
+              required
+              class="form-input" 
+              rows="4"
+              placeholder="Please provide complete context of the incident..."
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" (click)="showReportModal.set(false)" class="btn-secondary">Cancel</button>
+          <button type="submit" [disabled]="!reportDescription.trim()" class="btn-danger">Submit Report</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

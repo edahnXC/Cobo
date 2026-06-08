@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CollaborativeWorkspace.API/CollaborativeWorkspace.API.csproj" />
+    <Project Path="src/CollaborativeWorkspace.Application/CollaborativeWorkspace.Application.csproj" />
+    <Project Path="src/CollaborativeWorkspace.Domain/CollaborativeWorkspace.Domain.csproj" />
+    <Project Path="src/CollaborativeWorkspace.Infrastructure/CollaborativeWorkspace.Infrastructure.csproj" />
+  </Folder>
+</Solution>

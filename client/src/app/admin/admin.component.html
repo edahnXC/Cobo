@@ -1,0 +1,309 @@
+<div class="admin-container">
+  <header class="admin-header glass-panel">
+    <a routerLink="/workspaces" class="back-link">← Back to Workspaces</a>
+    <div class="header-main">
+      <h1 class="gradient-text">Platform Administration</h1>
+      <p>Manage users, review incident complaints, track system audit trails, and review transactional email logs.</p>
+    </div>
+    
+    <!-- Tab navigation -->
+    <nav class="admin-tabs">
+      <button 
+        [class.active]="activeTab() === 'users'" 
+        (click)="switchTab('users')"
+      >
+        👥 Users
+      </button>
+      <button 
+        [class.active]="activeTab() === 'complaints'" 
+        (click)="switchTab('complaints')"
+      >
+        ⚠️ Complaints Review
+      </button>
+      <button 
+        [class.active]="activeTab() === 'audit'" 
+        (click)="switchTab('audit')"
+      >
+        📋 Audit Logs
+      </button>
+      <button 
+        [class.active]="activeTab() === 'email'" 
+        (click)="switchTab('email')"
+      >
+        ✉️ Email logs
+      </button>
+    </nav>
+  </header>
+
+  <main class="admin-content glass-panel">
+    <div *ngIf="loading()" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading administration data...</p>
+    </div>
+
+    <ng-container *ngIf="!loading()">
+      <!-- USERS TAB -->
+      <section *ngIf="activeTab() === 'users'" class="tab-panel">
+        <div class="panel-header">
+          <h2>Registered Users (Total: {{ usersTotal }})</h2>
+          <div class="search-box">
+            <input 
+              type="text" 
+              [(ngModel)]="userSearch" 
+              (keydown.enter)="onUserSearch()"
+              placeholder="Search by name or email..." 
+              class="form-input" 
+            />
+            <button (click)="onUserSearch()" class="gradient-btn search-btn">Search</button>
+          </div>
+        </div>
+
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>User ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Verification Status</th>
+              <th>Subscription Plan</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let u of users()">
+              <td class="mono">{{ u.userId }}</td>
+              <td><strong>{{ u.fullName }}</strong></td>
+              <td>{{ u.email }}</td>
+              <td>
+                <span class="badge" [class]="u.isEmailVerified ? 'badge-success' : 'badge-danger'">
+                  {{ u.isEmailVerified ? 'Verified' : 'Unverified' }}
+                </span>
+              </td>
+              <td>
+                <span class="badge badge-primary">{{ u.currentPlan || 'Free' }}</span>
+              </td>
+              <td>
+                <span class="badge" [class]="u.isActive ? 'badge-success' : 'badge-danger'">
+                  {{ u.isActive ? 'Active' : 'Suspended' }}
+                </span>
+              </td>
+              <td>
+                <button 
+                  (click)="toggleUserStatus(u)" 
+                  [class]="u.isActive ? 'btn-danger-sm' : 'gradient-btn btn-sm'"
+                >
+                  {{ u.isActive ? 'Suspend User' : 'Activate User' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <button (click)="prevPage('users')" [disabled]="usersPage === 1">← Previous</button>
+          <span>Page {{ usersPage }} of {{ getTotalPages(usersTotal) }}</span>
+          <button (click)="nextPage('users', usersTotal)" [disabled]="usersPage >= getTotalPages(usersTotal)">Next →</button>
+        </div>
+      </section>
+
+      <!-- COMPLAINTS TAB -->
+      <section *ngIf="activeTab() === 'complaints'" class="tab-panel">
+        <div class="panel-header">
+          <h2>Moderation Complaints (Total: {{ complaintsTotal }})</h2>
+        </div>
+
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Category</th>
+              <th>Description</th>
+              <th>Reporter</th>
+              <th>Incident Target</th>
+              <th>Status</th>
+              <th>Resolution Note</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of complaints()">
+              <td class="mono">{{ c.complaintId.substring(0, 8) }}...</td>
+              <td><strong>{{ c.category }}</strong></td>
+              <td class="desc-cell">{{ c.description }}</td>
+              <td>{{ c.reporterName }}</td>
+              <td>
+                <div *ngIf="c.reportedUserName">👤 User: {{ c.reportedUserName }}</div>
+                <div *ngIf="c.workspaceId">🌐 Workspace ID: {{ c.workspaceId.substring(0,8) }}...</div>
+                <div *ngIf="c.messageId">💬 Msg ID: {{ c.messageId.substring(0,8) }}...</div>
+              </td>
+              <td>
+                <span class="badge" [class]="getBadgeClass(c.status)">{{ c.status }}</span>
+              </td>
+              <td>{{ c.resolution || '-' }}</td>
+              <td>
+                <button 
+                  *ngIf="c.status === 'Open' || c.status === 'UnderReview'" 
+                  (click)="openResolveModal(c)" 
+                  class="gradient-btn btn-sm"
+                >
+                  Resolve
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <button (click)="prevPage('complaints')" [disabled]="complaintsPage === 1">← Previous</button>
+          <span>Page {{ complaintsPage }} of {{ getTotalPages(complaintsTotal) }}</span>
+          <button (click)="nextPage('complaints', complaintsTotal)" [disabled]="complaintsPage >= getTotalPages(complaintsTotal)">Next →</button>
+        </div>
+      </section>
+
+      <!-- AUDIT LOGS TAB -->
+      <section *ngIf="activeTab() === 'audit'" class="tab-panel">
+        <div class="panel-header">
+          <h2>Platform Audit Logs (Total: {{ auditTotal }})</h2>
+          <div class="filter-box">
+            <input 
+              type="text" 
+              [(ngModel)]="auditActionFilter" 
+              (keydown.enter)="onAuditFilter()"
+              placeholder="Filter by action (e.g. USER_LOGIN)..." 
+              class="form-input" 
+            />
+            <button (click)="onAuditFilter()" class="gradient-btn search-btn">Filter</button>
+          </div>
+        </div>
+
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Log ID</th>
+              <th>User ID</th>
+              <th>Action</th>
+              <th>Entity Type</th>
+              <th>Entity ID</th>
+              <th>IP Address</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let log of auditLogs()">
+              <td class="mono">{{ log.logId }}</td>
+              <td class="mono">{{ log.userId || 'System / Public' }}</td>
+              <td><span class="action-tag">{{ log.action }}</span></td>
+              <td>{{ log.entityType || '-' }}</td>
+              <td class="mono">{{ log.entityId || '-' }}</td>
+              <td>{{ log.ipAddress || '-' }}</td>
+              <td>{{ log.createdAt | date:'medium' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <button (click)="prevPage('audit')" [disabled]="auditPage === 1">← Previous</button>
+          <span>Page {{ auditPage }} of {{ getTotalPages(auditTotal) }}</span>
+          <button (click)="nextPage('audit', auditTotal)" [disabled]="auditPage >= getTotalPages(auditTotal)">Next →</button>
+        </div>
+      </section>
+
+      <!-- EMAIL LOGS TAB -->
+      <section *ngIf="activeTab() === 'email'" class="tab-panel">
+        <div class="panel-header">
+          <h2>Email Send History (Total: {{ emailTotal }})</h2>
+          <div class="filter-box">
+            <select 
+              [(ngModel)]="emailStatusFilter" 
+              (change)="onEmailFilter()"
+              class="form-input"
+            >
+              <option value="">All Statuses</option>
+              <option value="Sent">Sent</option>
+              <option value="Failed">Failed</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+        </div>
+
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>To Email</th>
+              <th>Template Key</th>
+              <th>Subject</th>
+              <th>Status</th>
+              <th>Attempts / Errors</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let log of emailLogs()">
+              <td><strong>{{ log.toEmail }}</strong></td>
+              <td><span class="action-tag">{{ log.templateKey }}</span></td>
+              <td>{{ log.subject }}</td>
+              <td>
+                <span class="badge" [class]="log.status === 'Sent' ? 'badge-success' : 'badge-danger'">
+                  {{ log.status }}
+                </span>
+              </td>
+              <td>
+                <div *ngIf="log.status === 'Failed'" class="error-detail" [title]="log.errorMessage">
+                  ❌ {{ log.errorMessage || 'Unknown Error' }} (Attempts: {{ log.retryCount }})
+                </div>
+                <div *ngIf="log.status !== 'Failed'">
+                  ✓ Sent (Attempts: {{ log.retryCount }})
+                </div>
+              </td>
+              <td>{{ log.createdAt | date:'medium' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <button (click)="prevPage('email')" [disabled]="emailPage === 1">← Previous</button>
+          <span>Page {{ emailPage }} of {{ getTotalPages(emailTotal) }}</span>
+          <button (click)="nextPage('email', emailTotal)" [disabled]="emailPage >= getTotalPages(emailTotal)">Next →</button>
+        </div>
+      </section>
+    </ng-container>
+  </main>
+
+  <!-- Resolve Complaint Modal -->
+  <div class="modal-backdrop" *ngIf="selectedComplaintForResolve()" (click)="closeResolveModal()">
+    <div class="glass-panel modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Resolve Complaint</h3>
+        <button (click)="closeResolveModal()" class="close-btn">&times;</button>
+      </div>
+      <form (ngSubmit)="submitResolution()">
+        <div class="modal-body">
+          <p class="modal-info">Write the actions taken to address this violation. This will email the reporter.</p>
+          <div class="form-group">
+            <label class="form-label" for="resNote">Resolution Note</label>
+            <textarea 
+              id="resNote" 
+              name="resNote" 
+              [(ngModel)]="resolutionText" 
+              required
+              class="form-input" 
+              rows="5"
+              placeholder="e.g. Warning issued to user / Deleted inappropriate channel content / Issue resolved..."
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" (click)="closeResolveModal()" class="btn-secondary">Cancel</button>
+          <button type="submit" [disabled]="!resolutionText.trim() || resolving()" class="gradient-btn">
+            {{ resolving() ? 'Saving...' : 'Mark Resolved' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,15 @@
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\obj\Debug\net8.0\CollaborativeWorkspace.Application.csproj.AssemblyReference.cache
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\obj\Debug\net8.0\CollaborativeWorkspace.Application.GeneratedMSBuildEditorConfig.editorconfig
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\obj\Debug\net8.0\CollaborativeWorkspace.Application.AssemblyInfoInputs.cache
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\obj\Debug\net8.0\CollaborativeWorkspace.Application.AssemblyInfo.cs
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\obj\Debug\net8.0\CollaborativeWorkspace.Application.csproj.CoreCompileInputs.cache
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\bin\Debug\net8.0\CollaborativeWorkspace.Application.deps.json
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\bin\Debug\net8.0\CollaborativeWorkspace.Application.dll
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\bin\Debug\net8.0\CollaborativeWorkspace.Application.pdb
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\bin\Debug\net8.0\CollaborativeWorkspace.Domain.dll
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\bin\Debug\net8.0\CollaborativeWorkspace.Domain.pdb
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\obj\Debug\net8.0\Collabor.48E7E9EF.Up2Date
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\obj\Debug\net8.0\CollaborativeWorkspace.Application.dll
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\obj\Debug\net8.0\refint\CollaborativeWorkspace.Application.dll
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\obj\Debug\net8.0\CollaborativeWorkspace.Application.pdb
+F:\Projects\Cobo\src\CollaborativeWorkspace.Application\obj\Debug\net8.0\ref\CollaborativeWorkspace.Application.dll

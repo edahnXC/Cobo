@@ -1,0 +1,12 @@
+F:\Projects\Cobo\src\CollaborativeWorkspace.Domain\bin\Debug\net8.0\CollaborativeWorkspace.Domain.deps.json
+F:\Projects\Cobo\src\CollaborativeWorkspace.Domain\bin\Debug\net8.0\CollaborativeWorkspace.Domain.dll
+F:\Projects\Cobo\src\CollaborativeWorkspace.Domain\bin\Debug\net8.0\CollaborativeWorkspace.Domain.pdb
+F:\Projects\Cobo\src\CollaborativeWorkspace.Domain\obj\Debug\net8.0\CollaborativeWorkspace.Domain.csproj.AssemblyReference.cache
+F:\Projects\Cobo\src\CollaborativeWorkspace.Domain\obj\Debug\net8.0\CollaborativeWorkspace.Domain.GeneratedMSBuildEditorConfig.editorconfig
+F:\Projects\Cobo\src\CollaborativeWorkspace.Domain\obj\Debug\net8.0\CollaborativeWorkspace.Domain.AssemblyInfoInputs.cache
+F:\Projects\Cobo\src\CollaborativeWorkspace.Domain\obj\Debug\net8.0\CollaborativeWorkspace.Domain.AssemblyInfo.cs
+F:\Projects\Cobo\src\CollaborativeWorkspace.Domain\obj\Debug\net8.0\CollaborativeWorkspace.Domain.csproj.CoreCompileInputs.cache
+F:\Projects\Cobo\src\CollaborativeWorkspace.Domain\obj\Debug\net8.0\CollaborativeWorkspace.Domain.dll
+F:\Projects\Cobo\src\CollaborativeWorkspace.Domain\obj\Debug\net8.0\refint\CollaborativeWorkspace.Domain.dll
+F:\Projects\Cobo\src\CollaborativeWorkspace.Domain\obj\Debug\net8.0\CollaborativeWorkspace.Domain.pdb
+F:\Projects\Cobo\src\CollaborativeWorkspace.Domain\obj\Debug\net8.0\ref\CollaborativeWorkspace.Domain.dll

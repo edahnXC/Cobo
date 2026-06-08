@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "tvpLp74ORy0=",
+  "success": true,
+  "projectFilePath": "F:\\Projects\\Cobo\\src\\CollaborativeWorkspace.Domain\\CollaborativeWorkspace.Domain.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\omgfo\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}
