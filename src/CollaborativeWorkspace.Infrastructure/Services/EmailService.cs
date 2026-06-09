@@ -51,6 +51,16 @@ public class EmailService : IEmailService
         _db.EmailLogs.Add(log);
         await _db.SaveChangesAsync();
 
+        // In sandbox/dev mode: skip SendGrid API call entirely, just log to DB
+        if (_isSandbox)
+        {
+            _logger.LogInformation("[SANDBOX] Email skipped — To: {Email}, Subject: {Subject}", toEmail, subject);
+            log.Status = EmailStatus.Sent.ToString();
+            log.SentAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return;
+        }
+
         try
         {
             var apiKey = _config["SendGrid:ApiKey"] ?? throw new InvalidOperationException("SendGrid:ApiKey not configured.");
@@ -66,9 +76,6 @@ public class EmailService : IEmailService
                 PlainTextContent = template.PlainBody is not null ? ReplacePlaceholders(template.PlainBody, placeholders) : null
             };
             msg.AddTo(new EmailAddress(toEmail));
-
-            if (_isSandbox)
-                msg.SetSandBoxMode(true);
 
             var response = await client.SendEmailAsync(msg);
 
